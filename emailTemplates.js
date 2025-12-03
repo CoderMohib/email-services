@@ -433,7 +433,238 @@ const createThankYouEmail = (data) => {
   return createBaseTemplate(content);
 };
 
+/**
+ * Email template for campaign approval notification
+ */
+const createCampaignApprovalEmail = (data) => {
+  const { ownerName, campaignTitle, campaignId, approvalMessage } = data;
+
+  const content = `
+        <h1>🎉 Your Campaign Has Been Approved!</h1>
+        
+        <p>Dear ${ownerName},</p>
+        
+        <p>Great news! Your campaign <strong>"${campaignTitle}"</strong> has been reviewed and approved by our team.</p>
+        
+        <!-- Approval Card -->
+        <div class="card">
+            <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #1f2937;">
+                ✅ Campaign Approved
+            </p>
+            <p style="margin: 0; color: #4b5563; font-size: 15px;">
+                Your campaign meets our guidelines and is ready to go live. You can now start accepting donations!
+            </p>
+        </div>
+        
+        ${
+          approvalMessage
+            ? `
+        <div class="info-box">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #6b7280; font-size: 14px;">💬 Message from our team:</p>
+            <p style="margin: 0; color: #1f2937; font-style: italic;">"${approvalMessage}"</p>
+        </div>
+        `
+            : ""
+        }
+        
+        <p>You can now start your campaign and begin accepting donations. Share your campaign with your network to maximize your impact!</p>
+        
+        <div style="text-align: center;">
+            <a href="#" class="button">Start Your Campaign</a>
+        </div>
+        
+        <div class="card card-primary">
+            <p class="card-title">Next Steps</p>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #1f2937;">
+                <li style="margin-bottom: 8px;">Review your campaign details one last time</li>
+                <li style="margin-bottom: 8px;">Set your campaign to "In Progress" to start accepting donations</li>
+                <li style="margin-bottom: 8px;">Share your campaign on social media and with your network</li>
+                <li>Keep your supporters updated with regular campaign updates</li>
+            </ul>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            Thank you for using ${appConfig.appName} to make a difference!
+        </p>
+    `;
+
+  return createBaseTemplate(content);
+};
+
+/**
+ * Email template for campaign rejection notification
+ */
+const createCampaignRejectionEmail = (data) => {
+  const { ownerName, campaignTitle, campaignId, rejectionReason } = data;
+
+  const content = `
+        <h1>Campaign Review Update</h1>
+        
+        <p>Dear ${ownerName},</p>
+        
+        <p>Thank you for submitting your campaign <strong>"${campaignTitle}"</strong> for review. After careful consideration, we need to request some changes before we can approve your campaign.</p>
+        
+        <!-- Reason Card -->
+        <div class="info-box" style="border-left: 4px solid #f59e0b;">
+            <p style="margin: 0 0 12px 0; font-weight: 600; color: #92400e; font-size: 16px;">📋 Feedback:</p>
+            <p style="margin: 0; color: #1f2937; line-height: 1.6;">${rejectionReason}</p>
+        </div>
+        
+        <div class="card card-primary">
+            <p class="card-title">What You Can Do</p>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #1f2937;">
+                <li style="margin-bottom: 8px;">Review the feedback provided above</li>
+                <li style="margin-bottom: 8px;">Make the necessary changes to your campaign</li>
+                <li style="margin-bottom: 8px;">Resubmit your campaign for review</li>
+                <li>Contact our support team if you have any questions</li>
+            </ul>
+        </div>
+        
+        <p>We're here to help you succeed! Our goal is to ensure all campaigns on our platform meet our quality standards and provide the best experience for donors.</p>
+        
+        <div style="text-align: center;">
+            <a href="#" class="button">Edit Your Campaign</a>
+        </div>
+        
+        <div class="no-reply">
+            <strong>📧 Need help?</strong> If you have questions about this feedback, please contact our support team at <a href="mailto:${appConfig.supportEmail}" style="color: #92400e;">${appConfig.supportEmail}</a>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            We appreciate your understanding and look forward to seeing your improved campaign!
+        </p>
+    `;
+
+  return createBaseTemplate(content);
+};
+
+/**
+ * Email template for campaign completion notification
+ */
+const createCampaignCompletionEmail = (data) => {
+  const {
+    ownerName,
+    campaignTitle,
+    targetAmount,
+    totalRaised,
+    donorCount,
+    campaignDuration,
+  } = data;
+
+  const percentageRaised = Math.round((totalRaised / targetAmount) * 100);
+  const durationText = campaignDuration
+    ? `${Math.floor(campaignDuration / (1000 * 60 * 60 * 24))} days`
+    : "your campaign period";
+
+  const content = `
+        <h1>🎯 Congratulations! You Reached Your Goal!</h1>
+        
+        <p>Dear ${ownerName},</p>
+        
+        <p>We're thrilled to share some amazing news with you! Your campaign <strong>"${campaignTitle}"</strong> has successfully reached its funding goal!</p>
+        
+        <!-- Achievement Card -->
+        <div class="card">
+            <p style="margin: 0 0 15px 0; font-size: 24px; font-weight: 700; color: #10b981; text-align: center;">
+                🏆 Goal Achieved!
+            </p>
+            <div style="text-align: center;">
+                <div style="display: inline-block; margin: 0 15px;">
+                    <p style="margin: 0; font-size: 14px; color: #6b7280; text-transform: uppercase;">Total Raised</p>
+                    <p style="margin: 5px 0 0 0; font-size: 32px; font-weight: 700; color: #10b981;">$${totalRaised.toFixed(
+                      2
+                    )}</p>
+                </div>
+                <div style="display: inline-block; margin: 0 15px;">
+                    <p style="margin: 0; font-size: 14px; color: #6b7280; text-transform: uppercase;">Goal</p>
+                    <p style="margin: 5px 0 0 0; font-size: 32px; font-weight: 700; color: #1f2937;">$${targetAmount.toFixed(
+                      2
+                    )}</p>
+                </div>
+            </div>
+            <div style="margin-top: 20px; background-color: #e5e7eb; height: 12px; border-radius: 6px; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #10b981 0%, #059669 100%); height: 100%; width: 100%;"></div>
+            </div>
+            <p style="margin: 10px 0 0 0; text-align: center; font-size: 18px; font-weight: 600; color: #10b981;">
+                ${percentageRaised}% of goal reached! 🎉
+            </p>
+        </div>
+        
+        <!-- Campaign Statistics -->
+        <div class="info-box">
+            <p style="margin: 0 0 15px 0; font-weight: 700; color: #1f2937; font-size: 16px;">📊 Campaign Statistics</p>
+            <div class="info-row">
+                <span class="info-label">Total Amount Raised</span>
+                <span class="info-value" style="font-weight: 700; color: #10b981;">$${totalRaised.toFixed(
+                  2
+                )}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Number of Donors</span>
+                <span class="info-value">${donorCount} generous supporter${
+    donorCount !== 1 ? "s" : ""
+  }</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Campaign Duration</span>
+                <span class="info-value">${durationText}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Average Donation</span>
+                <span class="info-value">$${(
+                  totalRaised / Math.max(donorCount, 1)
+                ).toFixed(2)}</span>
+            </div>
+        </div>
+        
+        <!-- Impact Message -->
+        <div class="card card-primary">
+            <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #1f2937;">
+                🌟 Your Impact
+            </p>
+            <p style="margin: 0; color: #4b5563; font-size: 15px;">
+                Thanks to your dedication and the generosity of ${donorCount} donor${
+    donorCount !== 1 ? "s" : ""
+  }, 
+                you've raised <strong>$${totalRaised.toFixed(
+                  2
+                )}</strong> to make a real difference. 
+                This is a testament to the power of community and the importance of your cause.
+            </p>
+        </div>
+        
+        <p>Your campaign has now been marked as <strong>completed</strong>. You can still view your campaign details and donor list in your dashboard.</p>
+        
+        <div style="text-align: center;">
+            <a href="#" class="button">View Campaign Dashboard</a>
+        </div>
+        
+        <div class="card">
+            <p class="card-title">What's Next?</p>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #1f2937;">
+                <li style="margin-bottom: 8px;">Thank your donors personally if possible</li>
+                <li style="margin-bottom: 8px;">Share updates on how the funds will be used</li>
+                <li style="margin-bottom: 8px;">Post a final campaign update celebrating this achievement</li>
+                <li>Consider sharing the success story to inspire others</li>
+            </ul>
+        </div>
+        
+        <p style="text-align: center; margin: 25px 0; color: #6b7280; font-size: 14px;">
+            Thank you for making a difference through ${appConfig.appName}! 🙏
+        </p>
+        
+        <p style="color: #6b7280; font-size: 14px; margin-top: 30px; text-align: center;">
+            Congratulations once again on this incredible achievement! 🎊
+        </p>
+    `;
+
+  return createBaseTemplate(content);
+};
+
 module.exports = {
   createDonationNotificationEmail,
   createThankYouEmail,
+  createCampaignApprovalEmail,
+  createCampaignRejectionEmail,
+  createCampaignCompletionEmail,
 };

@@ -5,6 +5,9 @@ const cors = require("cors");
 const {
   createDonationNotificationEmail,
   createThankYouEmail,
+  createCampaignApprovalEmail,
+  createCampaignRejectionEmail,
+  createCampaignCompletionEmail,
 } = require("./emailTemplates");
 
 const app = express();
@@ -86,11 +89,20 @@ app.post("/api/send-email", async (req, res) => {
     } else if (type === "thank-you") {
       subject = `💚 Thank You for Your Donation to "${data.campaignTitle}"`;
       htmlContent = createThankYouEmail(data);
+    } else if (type === "campaign-approval") {
+      subject = `🎉 Your Campaign Has Been Approved!`;
+      htmlContent = createCampaignApprovalEmail(data);
+    } else if (type === "campaign-rejection") {
+      subject = `Campaign Review Update - Action Required`;
+      htmlContent = createCampaignRejectionEmail(data);
+    } else if (type === "campaign-completion") {
+      subject = `🎯 Congratulations! Campaign Goal Reached!`;
+      htmlContent = createCampaignCompletionEmail(data);
     } else {
       return res.status(400).json({
         success: false,
         error:
-          'Invalid email type. Must be "donation-notification" or "thank-you"',
+          'Invalid email type. Must be one of: "donation-notification", "thank-you", "campaign-approval", "campaign-rejection", "campaign-completion"',
       });
     }
 
