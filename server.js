@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const nodemailer = require("nodemailer");
+const SibApiV3Sdk = require("@sendinblue/client");
 const cors = require("cors");
 const {
   createDonationNotificationEmail,
@@ -37,25 +37,19 @@ app.use(
   })
 );
 
-// Create Nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Initialize Brevo (Sendinblue) API client
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+apiInstance.setApiKey(
+  SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+);
 
-// Verify SMTP connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ SMTP connection error:", error);
-  } else {
-    console.log("✅ SMTP server is ready to send emails");
-  }
-});
+// Verify Brevo API key on startup
+if (!process.env.BREVO_API_KEY) {
+  console.error("❌ BREVO_API_KEY is not set in environment variables");
+} else {
+  console.log("✅ Brevo API client initialized successfully");
+}
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -76,6 +70,21 @@ app.post("/api/send-email", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Missing required fields: type, to, data",
+      });
+    }
+
+    // Validate Brevo API key
+    if (!process.env.BREVO_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: "BREVO_API_KEY is not configured",
+      });
+    }
+
+    if (!process.env.FROM_EMAIL) {
+      return res.status(500).json({
+        success: false,
+        error: "FROM_EMAIL is not configured",
       });
     }
 
@@ -106,31 +115,39 @@ app.post("/api/send-email", async (req, res) => {
       });
     }
 
-    // Email options
-    const mailOptions = {
-      from: `${process.env.EMAIL_FROM_ADDRESS}`,
-      to: to,
-      subject: subject,
-      html: htmlContent,
+    // Prepare Brevo email object
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.sender = {
+      email: process.env.FROM_EMAIL,
+      name: process.env.FROM_NAME || "Donation App",
     };
+    sendSmtpEmail.to = [{ email: to }];
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = htmlContent;
 
-    // Send email
+    // Send email via Brevo
     console.log(`📧 Sending ${type} email to: ${to}`);
-    const info = await transporter.sendMail(mailOptions);
+    console.log(`📧 Using sender: ${process.env.FROM_EMAIL}`);
+
+    const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
 
     console.log("✅ Email sent successfully!");
-    console.log("📬 Message ID:", info.messageId);
+    console.log("📬 Message ID:", response.messageId || response);
 
     res.json({
       success: true,
-      messageId: info.messageId,
+      messageId: response.messageId || response,
       message: "Email sent successfully",
     });
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Error sending email:");
+    console.error("Error details:", error.message || error);
+    console.error("Full error:", error.response?.body || error);
+
     res.status(500).json({
       success: false,
       error: error.message || "Failed to send email",
+      details: error.response?.body || null,
     });
   }
 });
@@ -160,12 +177,16 @@ app.post("/api/send-donation-emails", async (req, res) => {
       const notificationHtml = createDonationNotificationEmail(donationData);
       const notificationSubject = `🎉 New Donation Received for "${donationData.campaignTitle}"`;
 
-      await transporter.sendMail({
-        from: `${process.env.EMAIL_FROM_ADDRESS}`,
-        to: campaignOwnerEmail,
-        subject: notificationSubject,
-        html: notificationHtml,
-      });
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      sendSmtpEmail.sender = {
+        email: process.env.FROM_EMAIL,
+        name: process.env.FROM_NAME || "Donation App",
+      };
+      sendSmtpEmail.to = [{ email: campaignOwnerEmail }];
+      sendSmtpEmail.subject = notificationSubject;
+      sendSmtpEmail.htmlContent = notificationHtml;
+
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
 
       results.notificationSent = true;
       console.log(`✅ Notification email sent to: ${campaignOwnerEmail}`);
@@ -186,12 +207,16 @@ app.post("/api/send-donation-emails", async (req, res) => {
       });
       const thankYouSubject = `💚 Thank You for Your Donation to "${donationData.campaignTitle}"`;
 
-      await transporter.sendMail({
-        from: `${process.env.EMAIL_FROM_ADDRESS}`,
-        to: donorEmail,
-        subject: thankYouSubject,
-        html: thankYouHtml,
-      });
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+      sendSmtpEmail.sender = {
+        email: process.env.FROM_EMAIL,
+        name: process.env.FROM_NAME || "Donation App",
+      };
+      sendSmtpEmail.to = [{ email: donorEmail }];
+      sendSmtpEmail.subject = thankYouSubject;
+      sendSmtpEmail.htmlContent = thankYouHtml;
+
+      await apiInstance.sendTransacEmail(sendSmtpEmail);
 
       results.thankYouSent = true;
       console.log(`✅ Thank you email sent to: ${donorEmail}`);
@@ -227,8 +252,10 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Email service running on port ${PORT}`);
-  console.log(`📧 SMTP Host: ${process.env.SMTP_HOST}`);
+  console.log(`📧 Email Provider: Brevo (Sendinblue)`);
   console.log(
-    `📬 From: ${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM_ADDRESS}>`
+    `📬 From: ${process.env.FROM_NAME || "Donation App"} <${
+      process.env.FROM_EMAIL
+    }>`
   );
 });

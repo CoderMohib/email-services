@@ -1,19 +1,21 @@
 # Donation App Email Backend
 
-Express.js backend service for sending emails via Nodemailer and SMTP. This service handles donation notification and thank you emails for the Donation App.
+Express.js backend service for sending emails via **Brevo (Sendinblue) API**. This service handles donation notification and thank you emails for the Donation App.
 
 ## Features
 
 - ✉️ Send donation notification emails to campaign owners
 - 💚 Send thank you emails to donors
+- 🎉 Send campaign approval/rejection emails
+- 🎯 Send campaign completion emails
 - 🎨 Beautiful HTML email templates with responsive design
-- 🔒 Secure SMTP configuration
-- 🚀 Ready for deployment on Render
+- 🔒 Secure API-based email sending (no SMTP ports required)
+- 🚀 **Ready for deployment on Render** (Brevo uses HTTP API, not blocked SMTP ports)
 
 ## Prerequisites
 
 - Node.js 14.0.0 or higher
-- SMTP email account (Gmail, SendGrid, etc.)
+- Brevo (Sendinblue) account with API key
 
 ## Local Setup
 
@@ -23,7 +25,14 @@ Express.js backend service for sending emails via Nodemailer and SMTP. This serv
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Get Brevo API Key
+
+1. Sign up for a free account at [Brevo (Sendinblue)](https://www.brevo.com/)
+2. Go to **Settings** → **SMTP & API** → **API Keys**
+3. Create a new API key and copy it
+4. Free tier includes **300 emails/day**
+
+### 3. Configure Environment Variables
 
 Create a `.env` file in the root directory:
 
@@ -31,42 +40,35 @@ Create a `.env` file in the root directory:
 cp .env.example .env
 ```
 
-Edit `.env` with your SMTP credentials:
+Edit `.env` with your Brevo credentials:
 
 ```env
 # Server Configuration
 PORT=3000
-NODE_ENV=development
 
-# SMTP Configuration (Gmail example)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-specific-password
+# Brevo (Sendinblue) API Configuration
+BREVO_API_KEY=your_brevo_api_key_here
 
-# Email Sender Info
-EMAIL_FROM_NAME=Donation App
-EMAIL_FROM_ADDRESS=your-email@gmail.com
+# Email Configuration
+FROM_EMAIL=noreply@yourdomain.com
+FROM_NAME=Donation App
 
 # App Configuration
 APP_NAME=Donation App
 APP_URL=https://your-app-url.com
-SUPPORT_EMAIL=support@your-app.com
+SUPPORT_EMAIL=support@yourdomain.com
 
 # CORS Configuration
 ALLOWED_ORIGINS=*
 ```
 
-### 3. Gmail Setup (if using Gmail)
+### 4. Verify Sender Email in Brevo
 
-1. Enable 2-Factor Authentication on your Google account
-2. Generate an App Password:
-   - Go to Google Account Settings → Security → 2-Step Verification → App passwords
-   - Select "Mail" and "Other (Custom name)"
-   - Copy the generated password and use it as `SMTP_PASS`
+1. Go to Brevo Dashboard → **Senders**
+2. Add and verify your `FROM_EMAIL` address
+3. Follow the verification email instructions
 
-### 4. Start the Server
+### 5. Start the Server
 
 Development mode (with auto-reload):
 
@@ -96,7 +98,7 @@ Response:
 {
   "status": "ok",
   "message": "Email service is running",
-  "timestamp": "2024-12-02T12:00:00.000Z"
+  "timestamp": "2024-12-03T12:00:00.000Z"
 }
 ```
 
@@ -110,7 +112,7 @@ Request body:
 
 ```json
 {
-  "type": "donation-notification" | "thank-you",
+  "type": "donation-notification" | "thank-you" | "campaign-approval" | "campaign-rejection" | "campaign-completion",
   "to": "recipient@example.com",
   "data": {
     // For donation-notification:
@@ -129,7 +131,27 @@ Request body:
     "campaignOwnerName": "John Doe",
     "amount": 100,
     "message": "Happy to help!",
-    "isAnonymous": false
+    "isAnonymous": false,
+
+    // For campaign-approval:
+    "ownerName": "John Doe",
+    "campaignTitle": "Help Build a School",
+    "campaignId": "abc123",
+    "approvalMessage": "Great campaign!",
+
+    // For campaign-rejection:
+    "ownerName": "John Doe",
+    "campaignTitle": "Help Build a School",
+    "campaignId": "abc123",
+    "rejectionReason": "Please add more details",
+
+    // For campaign-completion:
+    "ownerName": "John Doe",
+    "campaignTitle": "Help Build a School",
+    "targetAmount": 10000,
+    "totalRaised": 10500,
+    "donorCount": 50,
+    "campaignDuration": 2592000000
   }
 }
 ```
@@ -198,17 +220,12 @@ git push -u origin main
 
 ### 3. Add Environment Variables
 
-In Render dashboard, add all environment variables from `.env`:
+In Render dashboard, add all environment variables:
 
 - `PORT` = 3000
-- `NODE_ENV` = production
-- `SMTP_HOST` = smtp.gmail.com
-- `SMTP_PORT` = 587
-- `SMTP_SECURE` = false
-- `SMTP_USER` = your-email@gmail.com
-- `SMTP_PASS` = your-app-password
-- `EMAIL_FROM_NAME` = Donation App
-- `EMAIL_FROM_ADDRESS` = your-email@gmail.com
+- `BREVO_API_KEY` = your_brevo_api_key
+- `FROM_EMAIL` = noreply@yourdomain.com
+- `FROM_NAME` = Donation App
 - `APP_NAME` = Donation App
 - `APP_URL` = https://your-app-url.com
 - `SUPPORT_EMAIL` = support@your-app.com
@@ -219,6 +236,14 @@ In Render dashboard, add all environment variables from `.env`:
 Click "Create Web Service" and wait for deployment to complete.
 
 Your backend will be available at: `https://your-service-name.onrender.com`
+
+## Why Brevo Instead of SMTP?
+
+✅ **Render Compatible**: Brevo uses HTTP API instead of SMTP ports (25, 465, 587) which are blocked by Render  
+✅ **Free Tier**: 300 emails/day for free  
+✅ **Reliable**: Better deliverability than Gmail SMTP  
+✅ **No Port Restrictions**: Works on any hosting platform  
+✅ **Easy Setup**: Just need an API key, no complex SMTP configuration
 
 ## Testing
 
@@ -250,12 +275,17 @@ curl -X POST https://your-service-name.onrender.com/api/send-email \
 
 ## Troubleshooting
 
-### SMTP Connection Error
+### API Key Error
 
-- Verify SMTP credentials are correct
-- For Gmail, ensure App Password is used (not regular password)
-- Check if 2FA is enabled on your email account
-- Verify SMTP_HOST and SMTP_PORT are correct
+- Verify `BREVO_API_KEY` is set correctly
+- Check if API key is active in Brevo dashboard
+- Ensure no extra spaces in the API key
+
+### Email Not Sent
+
+- Verify sender email is verified in Brevo dashboard
+- Check Brevo account limits (300 emails/day on free tier)
+- Check server logs for detailed error messages
 
 ### CORS Error
 
@@ -267,8 +297,8 @@ curl -X POST https://your-service-name.onrender.com/api/send-email \
 
 - Check spam/junk folder
 - Verify recipient email address is correct
-- Check server logs for errors
-- Test SMTP connection with a simple test email
+- Check Brevo dashboard for email logs
+- Ensure sender email is verified
 
 ## Project Structure
 
